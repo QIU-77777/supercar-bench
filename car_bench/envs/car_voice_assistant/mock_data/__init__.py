@@ -19,8 +19,12 @@ ALL_MODELS = ALL_STATE_MODELS + ALL_CONTEXT_MODELS
 
 
 def _repo_data_dir() -> Path:
-    """Repository-level data directory (``<repo>/data``)."""
-    return Path(__file__).resolve().parents[3] / "data"
+    """Repository-level data directory (``<repo>/data``).
+
+    This file lives at ``<repo>/car_bench/envs/car_voice_assistant/mock_data/``,
+    four levels below the repository root.
+    """
+    return Path(__file__).resolve().parents[4] / "data"
 
 
 def _resolve_data_directory() -> str:

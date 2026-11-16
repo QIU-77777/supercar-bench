@@ -44,3 +44,9 @@ analysis_results*/
 # Downloaded mock data (686 MB; two files exceed GitHub's 100 MB per-file limit)
 data/mock_data/
 data/.cache/
+
+# Local run outputs
+results/
+analysis_results/
+analysis_output/
+individual_results/

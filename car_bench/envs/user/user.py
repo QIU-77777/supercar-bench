@@ -82,6 +82,7 @@ class LLMUserSimulationEnv(BaseUserSimulationEnv):
         except Exception as e:
             print(f"Error checking end conversation failure: {e}")
 
+        last_error: Optional[Exception] = None
         for _ in range(2):
             try:
                 completion_kwargs = {
@@ -104,11 +105,18 @@ class LLMUserSimulationEnv(BaseUserSimulationEnv):
                 user_output = self.response_format.model_validate(message_content)
                 break
             except Exception as e:
+                last_error = e
                 print(f"Error parsing user output: {e}")
                 time.sleep(self.retry_backoff_sec)
                 messages[-1][
                     "content"
                 ] += f"\n\nLast generated message was not a valid user output: {e}. Try again."
+        else:
+            # Both attempts failed: surface the real error instead of using an
+            # unbound variable further down.
+            raise RuntimeError(
+                f"用户模拟器连续 2 次产出无效输出：{last_error}"
+            ) from last_error
 
         user_message = check_end_conversation(
             user_output.conversation_control_keyword, user_output.user_message
