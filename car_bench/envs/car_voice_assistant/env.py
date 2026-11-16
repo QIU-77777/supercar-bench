@@ -1,5 +1,6 @@
 import json
-from typing import List, Optional, Union
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 from car_bench.envs.base import Env
 from car_bench.envs.car_voice_assistant.mock_data import load_data
@@ -16,18 +17,56 @@ from car_bench.types import Action, Task
 HF_DATASET_REPO_ID = "johanneskirmayr/car-bench-dataset"
 
 
+def _repo_root() -> Path:
+    """Repository root (three levels above this file)."""
+    return Path(__file__).resolve().parents[3]
+
+
+def _local_tasks_file(task_type: str, task_split: str) -> Optional[Path]:
+    """Path to the vendored task file for this type/split, if present.
+
+    Tasks live in ``data/tasks/<type>_<split>.jsonl`` after running
+    ``scripts/download_dataset.py``. The file is small (about 1 MB for all
+    six splits), so it is committed to the repository.
+    """
+    path = _repo_root() / "data" / "tasks" / f"{task_type}_{task_split}.jsonl"
+    return path if path.is_file() else None
+
+
+def _parse_task_row(d: Dict[str, Any]) -> Task:
+    """Build a Task from one raw dataset row.
+
+    ``context_init_config``, ``actions`` and ``removed_part`` are stored as
+    JSON strings in the dataset and are parsed back here.
+    """
+    d = dict(d)
+    d["context_init_config"] = json.loads(d["context_init_config"])
+    d["actions"] = [Action(**a) for a in json.loads(d["actions"])]
+    if d.get("removed_part") is not None:
+        d["removed_part"] = json.loads(d["removed_part"])
+    return Task(**d)
+
+
 def _load_tasks(
     task_type: str,
     task_split: str,
     repo_id: str = HF_DATASET_REPO_ID,
 ) -> List[Task]:
-    """Load tasks from HuggingFace dataset repo.
+    """Load tasks, preferring the vendored copy under data/tasks/.
 
-    The HF dataset has configs like 'tasks_base', 'tasks_disambiguation',
-    'tasks_hallucination' with train/test splits already separated.
-    Fields 'context_init_config', 'actions', and 'removed_part' are stored
-    as JSON strings and need to be parsed back.
+    Falls back to the HuggingFace dataset when the local file is absent.
     """
+    local = _local_tasks_file(task_type, task_split)
+    if local is not None:
+        tasks = []
+        for line in local.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            tasks.append(_parse_task_row(json.loads(line)))
+        print(f"Loaded {len(tasks)} tasks from local file: {local}")
+        return tasks
+
     from datasets import load_dataset
 
     config_name = f"tasks_{task_type}"
@@ -36,15 +75,7 @@ def _load_tasks(
 
     tasks = []
     for row in ds:
-        d = dict(row)
-        # Parse JSON string fields back to Python objects
-        d["context_init_config"] = json.loads(d["context_init_config"])
-        d["actions"] = [
-            Action(**a) for a in json.loads(d["actions"])
-        ]
-        if d.get("removed_part") is not None:
-            d["removed_part"] = json.loads(d["removed_part"])
-        tasks.append(Task(**d))
+        tasks.append(_parse_task_row(dict(row)))
 
     print(f"Loaded {len(tasks)} tasks from HuggingFace ({config_name}/{task_split})")
     return tasks

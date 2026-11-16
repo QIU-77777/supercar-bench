@@ -178,6 +178,26 @@ The analysis script computes:
 
 Results are saved as JSON and CSV files in `analysis_output/` (or custom directory specified with `--output`).
 
+## 本地数据集（data/）
+
+评测数据可以整体放到仓库的 `data/` 目录，运行不依赖 HuggingFace：
+
+```bash
+python scripts/download_dataset.py            # 任务 + mock_data
+python scripts/download_dataset.py --tasks-only   # 只下任务（约 1 MB）
+```
+
+目录结构与加载优先级：
+
+| 目录 | 内容 | 体积 | git |
+|---|---|---|---|
+| `data/tasks/` | 六个任务文件（`<类型>_<划分>.jsonl`） | 1 MB | 纳入版本库 |
+| `data/mock_data/` | 固定资料：地点、POI、路线、天气、联系人、日历 | 686 MB | 本地保留，git 忽略 |
+
+`data/mock_data/` 不进 git：两个文件超过 GitHub 单文件 100 MB 上限，且资料可重新生成。换机器或更新数据集时重跑下载脚本即可。
+
+加载顺序：环境变量 `CAR_BENCH_MOCK_DATA_DIR` > `data/mock_data` > HuggingFace 下载。任务文件同理，`data/tasks/` 存在时优先读本地，否则回退 HuggingFace。
+
 ## MCP Tool Server
 
 The toolset can run as a standalone MCP (Model Context Protocol) server, so any agent can call the in-car tools over HTTP instead of importing the Python classes. The server owns per-session state; the tool classes are used unmodified.

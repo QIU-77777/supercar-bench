@@ -1,6 +1,7 @@
 import os
 import sys
 import traceback
+from pathlib import Path
 
 from car_bench.envs.car_voice_assistant.context.dynamic_context_state import (
     ContextState,
@@ -17,17 +18,30 @@ ALL_CONTEXT_MODELS = [FixedContext]
 ALL_MODELS = ALL_STATE_MODELS + ALL_CONTEXT_MODELS
 
 
+def _repo_data_dir() -> Path:
+    """Repository-level data directory (``<repo>/data``)."""
+    return Path(__file__).resolve().parents[3] / "data"
+
+
 def _resolve_data_directory() -> str:
     """Resolve the mock data directory.
 
-    ``CAR_BENCH_MOCK_DATA_DIR`` points at a local directory with the
-    ``navigation/`` and ``productivity_and_communication/`` subfolders; when it
-    is unset the files are downloaded from HuggingFace and cached locally.
+    Resolution order:
+
+    1. ``CAR_BENCH_MOCK_DATA_DIR`` — explicit override, wins over everything.
+    2. ``<repo>/data/mock_data`` — the vendored copy created by
+       ``scripts/download_dataset.py``.
+    3. HuggingFace download (cached under the HF cache).
     """
     override = os.environ.get("CAR_BENCH_MOCK_DATA_DIR")
     if override:
-        print(f"Using local mock data directory: {override}")
+        print(f"Using mock data directory from CAR_BENCH_MOCK_DATA_DIR: {override}")
         return override
+
+    vendored = _repo_data_dir() / "mock_data"
+    if vendored.is_dir():
+        print(f"Using vendored mock data directory: {vendored}")
+        return str(vendored)
 
     from huggingface_hub import snapshot_download
 

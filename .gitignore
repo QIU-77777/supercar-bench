@@ -40,3 +40,7 @@ docs/reference_data/mock_data/navigation/routes_metadata.jsonl
 _hf_upload_staging/
 
 analysis_results*/
+
+# Downloaded mock data (686 MB; two files exceed GitHub's 100 MB per-file limit)
+data/mock_data/
+data/.cache/

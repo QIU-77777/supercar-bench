@@ -143,12 +143,23 @@ class ScriptedAgent:
 
 
 def ensure_mock_data_dir() -> str:
+    """Point the mock data loader at a usable directory.
+
+    Precedence matches the loader: an explicit CAR_BENCH_MOCK_DATA_DIR wins,
+    then the vendored data/mock_data. Only when neither exists does the
+    self-check generate a tiny empty fixture so the run stays offline.
+    """
     existing = os.environ.get("CAR_BENCH_MOCK_DATA_DIR")
     if existing:
         return existing
+    vendored = REPO_ROOT / "data" / "mock_data"
+    if vendored.is_dir():
+        return str(vendored)
     root = Path(tempfile.mkdtemp(prefix="supercar-selfcheck-data-"))
-    for folder in ("navigation", "productivity_and_communication"):
-        (root / folder).mkdir(parents=True, exist_ok=True)
+    nav = root / "navigation"
+    prod = root / "productivity_and_communication"
+    nav.mkdir(parents=True)
+    prod.mkdir(parents=True)
     for name in (
         "locations.jsonl",
         "pois.jsonl",
@@ -158,16 +169,7 @@ def ensure_mock_data_dir() -> str:
         "routes_poi_location.jsonl",
         "routes_metadata.jsonl",
         "routes_index.jsonl",
-        "contacts.jsonl",
-        "calendars.jsonl",
     ):
-        (root / "navigation" if name != "contacts.jsonl" and name != "calendars.jsonl" else root / "productivity_and_communication", )
-        pass
-    nav = root / "navigation"
-    prod = root / "productivity_and_communication"
-    for name in ("locations.jsonl", "pois.jsonl", "weather.jsonl",
-                 "routes_location_location.jsonl", "routes_location_poi.jsonl",
-                 "routes_poi_location.jsonl", "routes_metadata.jsonl", "routes_index.jsonl"):
         (nav / name).write_text("", encoding="utf-8")
     for name in ("contacts.jsonl", "calendars.jsonl"):
         (prod / name).write_text("", encoding="utf-8")
